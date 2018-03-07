@@ -53,7 +53,7 @@ def json_msg_obj(code,message,data=None,file=None,files=None,pdffile=None,pngfil
     if file:
         obj['file'] = file
     if files:
-        obj['file'] = files
+        obj['files'] = files
     if pdffile:
         obj['pdffile'] = pdffile
     if pngfiles:
@@ -174,6 +174,13 @@ def json_msg_module_not_accessible(module_name):
 def json_pdf_to_pngs_success(pdffile,pngfiles):
     """Return a string"""
     return json_msg(10,"Successfully converted PDF to PNG(s)",False, pdffile=pdffile, pngfiles=pngfiles)
+
+def json_progress(progress_message):
+    """
+    Use to provide an informational message indicating extent of
+    progress.
+    """
+    return json_msg(50, progress_message, False)
 
 def json_scanset(scanSet):
     return json_msg(30, 'scanset', False, data=scanSet);

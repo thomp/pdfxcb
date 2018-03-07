@@ -53,6 +53,26 @@ def pdf_page_to_png(src_pdf, pagenum = 0, resolution = 72):
     img.convert("png")
     return img
 
+def pdf_split(input_pdf_file,output_files,page_ranges):
+    """
+    INPUT_PDF_FILE is a string representing the path to a PDF file. OUTPUT_FILES is a list of strings representing paths to output files corresponding to the specified page ranges.
+    """
+    reader = PyPDF2.PdfFileReader(input_pdf_file)
+    for output_file, page_range in zip(output_files,page_ranges):
+        writer = PyPDF2.PdfFileWriter()
+        pdf_split_internal(reader,writer,page_range)
+        output_file = open(output_file,"wb")
+        writer.write(output_file)
+        output_file.close()
+
+def pdf_split_internal (pdf_file_reader,pdf_file_writer,page_range):
+    """
+    Add the pages, specified by PAGE_RANGE, from specified reader object to the specified writer object. PAGE_RANGE is a tuple where the elements are integers defining the first and last page (inclusive) in the page range. Page count begins at 0.
+    """
+    pages = list(range(page_range[0],page_range[1]+1))
+    for page_index in pages:
+        pdf_file_writer.addPage(pdf_file_reader.getPage(page_index))
+
 def pdf_to_pngs(pdf_file,output_dir):
     """
     Generate PNG files, one corresponding to each page of the PDF file PDF_FILE. Write files to directory specified by OUTPUT_DIR. Return a list of the PNG file names.
@@ -71,6 +91,7 @@ def pdf_to_pngs__gs (pdf_file, number_of_pages, outfile_root, output_dir):
     # %03d is printf directive directing gs to specify page number as a zero-padded 3-digit sequence
     output_path_spec = output_dir_and_filename + '-%03d.png'
     lg.debug(output_path_spec)
+    # issue: gs doesn't give feedback regarding extent of progress
     gs_command = [
         "gs",
         "-q",

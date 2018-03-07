@@ -23,6 +23,7 @@ import imp
 import json
 import os
 import os.path
+import re
 import signal
 import sys
 import tempfile
@@ -82,7 +83,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 #
 # function definitions
 #
-def locate_cover_sheets (png_files,containing_dir):
+def locate_cover_sheets (png_files,containing_dir,match_re):
     """
     Given the list of files specified by PNG_FILES and CONTAINING_DIR, identify those files containing a barcode. Return multiple values: a list of the corresponding indices and a list of the corresponding barcodes.
     """
@@ -92,6 +93,8 @@ def locate_cover_sheets (png_files,containing_dir):
     i = 0
     i_max = len(png_files)
     while (i<i_max):
+        # log progress by default (otherwise, this can be a long period of silence...)
+        lg.info(json1.json_progress("looking for barcode on page " + str(i) + " of " + str(i_max) + " png files"))
         image_file_spec = os.path.join(containing_dir,png_files[i])
         lg.debug(image_file_spec)
         scan_region = ([0,0,0.5,0.5])
@@ -99,9 +102,14 @@ def locate_cover_sheets (png_files,containing_dir):
             image_file_spec,
             scan_region
         )
+        # don't ignore barcode if consider is true
+        consider = True
         if maybe_barcode:
-            barcodes.append(maybe_barcode)
-            indices.append(i)
+            if match_re:
+                consider = match_re.match(maybe_barcode)
+            if consider:
+                barcodes.append(maybe_barcode)
+                indices.append(i)
         i = i+1
         lg.debug(barcodes)
         lg.debug(indices)
@@ -119,7 +127,24 @@ def executable_sanity_checks (executables):
             lg.info(json1.json_last_log_msg())
             sys.exit(msg)
 
-def sanity_checks (dirs,files ):
+def generate_output_file_names(cover_sheet_barcodes,cover_sheet_indices,output_dir):
+    file_names = []
+    for cover_sheet_barcode,cover_sheet_index in zip(cover_sheet_barcodes,cover_sheet_indices):
+        cover_sheet_index_as_string = str.format("{0:0>03d}", cover_sheet_index)
+        file_name = cover_sheet_barcode + "-" + cover_sheet_index_as_string + ".pdf"
+        file_names.append(os.path.join(output_dir,file_name))
+    return file_names
+
+def generate_page_ranges(cover_sheet_indices,number_of_pages):
+    # to capture last set of pages, tag on an imaginary cover sheet at the end
+    cover_sheet_indices.append(number_of_pages)
+    page_ranges = []
+    for cover_sheet_index, next_cover_sheet_index in zip(cover_sheet_indices[:-1],cover_sheet_indices[1:]):
+        page_ranges.append((cover_sheet_index, next_cover_sheet_index-1))
+    return page_ranges
+
+def sanity_checks (dirs,files):
+    lg.debug(files)
     required_executables = [
         'gs'
         #'pdftoppm'
@@ -132,23 +157,37 @@ def sanity_checks (dirs,files ):
     ]
     module_sanity_checks (required_modules,True)
 
-def pdfxcb (pdf_file_spec,output_dir):
+def pdfxcb (pdf_file_spec,output_dir,match_re):
     """
-    Given the file specified by PDF_FILE_SPEC, look for cover sheets and split the PDF at each coversheet. Name output file(s) based on cover sheet content. Write files to directory specified by OUTPUT_DIR.
+    Given the file specified by PDF_FILE_SPEC, look for cover sheets and split the PDF at each coversheet. Name output file(s) based on cover sheet content. Write files to directory specified by OUTPUT_DIR. If MATCH_RE is defined, ignore barcodes unless the corresponding string matches the regex MATCH_RE.
     """
     global lg
     # sanity checks
     sanity_checks([output_dir],[pdf_file_spec])
-    # split PDF
+    # extract PDF pages as image data (PNG files)
     png_files = split_pdf_to_png_files(pdf_file_spec,output_dir)
     # locate cover sheets
-    cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_files,output_dir)
-    lg.debug("000")
+    cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_files,output_dir,match_re)
     lg.debug(cover_sheet_barcodes)
     lg.debug(cover_sheet_indices)
-    lg.debug("001")
+    # clean up PNG files
+    for png_file in png_files:
+        os.remove(os.path.join(output_dir,png_file))
     # write PDFs
-    #
+    pdf_length = len(png_files)
+    page_ranges = generate_page_ranges(cover_sheet_indices,pdf_length)
+    output_file_names = generate_output_file_names(cover_sheet_barcodes,cover_sheet_indices,output_dir)
+    lg.debug(output_file_names)
+    pdf.pdf_split(pdf_file_spec,output_file_names,page_ranges)
+    lg.info(json1.json_msg(40,
+             ['Analysis and burst completed'],
+             False,
+             files=output_file_names,
+             data={
+                 'barcodes': cover_sheet_barcodes,
+                 'indices': cover_sheet_indices
+             }
+    ))
     return True
 
 
@@ -198,8 +237,6 @@ def busca_using_png_gen(pdf_file_spec, xy_file, ignore_page_p):
     scanSets_json = json1.json_scansets(scanSets)
     lg.info(scanSets_json)
     return True
-
-
 
 def busca_deskew_scanset (scanSet,blank_page_triggers_error_p,debugp):
     page_numbers = [n for n in range(scanSet['pdfPageStart'],scanSet['pdfPageEnd']+1)]
@@ -409,6 +446,16 @@ def main():
                         action="store",
                         dest="log_file",
                         type=str)
+    parser.add_argument("-d",
+                        help="absolute path to output directory",
+                        action="store",
+                        dest="output_dir",
+                        type=str)
+    parser.add_argument("-m",
+                        help="match barcodes to regex (ignore if no match)",
+                        action="store",
+                        dest="match_re_string",
+                        type=str)
     parser.add_argument("-p",
                         help="identifier for a specific instance of pdfxcb",
                         action="store",
@@ -420,7 +467,8 @@ def main():
                         dest="log_level",
                         type=int)
     #parser.add_argument('-v', '--version', action='version', version=version.version)
-    parser.add_argument("input_file", help="an input (PDF) file",
+    parser.add_argument("input_files", help="an input (PDF) file",
+                        # keep nargs as we may want to accept multiple PDFs as input at some point
                         nargs=1,
                         type=str)
     args = parser.parse_args()
@@ -452,13 +500,15 @@ def main():
     else:
         identifier = str(uuid.uuid1())
     lg.info(json1.json_first_log_msg(identifier))
-    ignore_page_offset = args.ignore_page_offset
-    pdf_files = args.input_file
-    lg.debug("pdf_files: %s", pdf_files)
-    ignore_page_p = False
-    if ( ignore_page_offset > 0 ):
-        ignore_page_p = True
-    pdfxcb(pdf_file_spec)
+    # 1000[0-9][0-9][0-9]$ matches on tt user id
+    match_re_string = args.match_re_string
+    lg.debug(match_re_string)
+    match_re = None
+    if match_re_string:
+        match_re = re.compile(match_re_string)
+    pdf_file_spec = args.input_files[0]
+    lg.debug(pdf_file_spec)
+    pdfxcb(pdf_file_spec,args.output_dir,match_re)
     # busca_using_png_gen(pdf_files[0], xy_file, ignore_page_p)
     lg.info(json1.json_last_log_msg())
 
