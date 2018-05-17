@@ -83,10 +83,17 @@ def pdf_to_pngs(pdf_file,output_dir):
     # determine number of pages
     reader = PyPDF2.PdfFileReader(file(pdf_file, "rb"))
     number_of_pages = reader.getNumPages()
-    return pdf_to_pngs__gs(pdf_file, number_of_pages, outfile_root, output_dir)
+    # Qs:
+    # 1. advantages/disadvantages of gs and pdftoppm = ?
+    # 2. is there really no way to just scan directly from PDF, specifying page # as we go?
+    return pdf_to_pngs__pdftoppm(pdf_file, number_of_pages, outfile_root, output_dir)
 
 def pdf_to_pngs__gs (pdf_file, number_of_pages, outfile_root, output_dir):
-    """Helper relying on Ghostscript"""
+    """
+    Helper relying on Ghostscript. Return a list of file names.
+    """
+    # see common-lisp/tt-cover-sheets/conversion-of-pdf-to-png-and-zbar.txt
+    pdf_to_png_res = "72"      # 72 dpi
     output_dir_and_filename = os.path.join(output_dir,outfile_root)
     # %03d is printf directive directing gs to specify page number as a zero-padded 3-digit sequence
     output_path_spec = output_dir_and_filename + '-%03d.png'
@@ -98,7 +105,7 @@ def pdf_to_pngs__gs (pdf_file, number_of_pages, outfile_root, output_dir):
         "-dBATCH",
         "-dNOPAUSE",
         "-sDEVICE=pnggray",
-        '-r300',                # 300 dpi
+        '-r'+pdf_to_png_res,
         #"-dAutoRotatePages=/PageByPage",
         '-dUseCropBox',
         # use %d as a printf format specification for page number
@@ -131,13 +138,14 @@ def pdf_to_pngs__gs_file_names (number_of_pages,outfile_root):
         png_files.append(png_infile)
     return png_files
 
-def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root):
+def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root, output_dir):
     """
-    Helper relying on pdftoppm
+    Helper relying on pdftoppm. Return a list of file names. OUTFILE_ROOT is the filename only (no directory information).
     """
+    output_dir_and_filename = os.path.join(output_dir,outfile_root)
     for page_number in range(number_of_pages):
         returncode = subprocess.call(
-            ["pdftoppm", "-f", str(page_number), "-l", str(page_number), "-gray", "-png", pdf_file, outfile_root],
+            ["pdftoppm", "-f", str(page_number), "-l", str(page_number), "-gray", "-png", pdf_file, output_dir_and_filename],
             shell=False)
         if (returncode == 0):
             lg.info(json1.json_completed_pdf_to_ppm(page_number,number_of_pages))
@@ -159,6 +167,6 @@ def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root):
     for pagenumber in range(number_of_pages):
         png_infile = str.format(
             string_format_string,
-            outfile_root,pagenumber+1);
+            output_dir_and_filename,pagenumber+1);
         png_files.append(png_infile)
     return png_files

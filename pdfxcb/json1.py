@@ -63,7 +63,7 @@ def json_msg_obj(code,message,data=None,file=None,files=None,pdffile=None,pngfil
 #
 # messages
 #
-def json_msg_barcode_not_found(files,msg):
+def json_barcode_not_found_msg(files,msg):
     """FILES is an array where each member is a string specifying the location of a diagnostic image file. MSG is additional data encapsulated as a string"""
     message = 'Anticipated a barcode but barcode was not found; see diagnostic image file(s) at {}'.format(files)
     if msg:
