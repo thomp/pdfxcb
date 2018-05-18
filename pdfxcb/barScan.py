@@ -145,8 +145,6 @@ def barcodeScan_python_zbar_sub (pilCropped):
     for symbol in image:
         lg.debug("symbol: %s",symbol)
         barcodeString = symbol.data
-        if ( not barcodeString ):
-            lg.warn(json1.json_barcode_not_found_msg([imagePNGPath],""));
         #barcodeType = symbol.type
     lg.debug("barcodeScan.90: %s",barcodeString)
     # clean up (destroy the image object to free up references to the data and symbols)
