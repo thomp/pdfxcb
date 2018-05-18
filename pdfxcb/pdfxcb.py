@@ -166,6 +166,7 @@ def pdfxcb (pdf_file_spec,output_dir,match_re):
     sanity_checks([output_dir],[pdf_file_spec])
     # extract PDF pages as image data (PNG files)
     png_files = split_pdf_to_png_files(pdf_file_spec,output_dir)
+    lg.debug(png_files)
     # locate cover sheets
     cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_files,output_dir,match_re)
     lg.debug(cover_sheet_barcodes)
@@ -246,7 +247,7 @@ def split_pdf_to_png_files (pdf_file_spec,output_dir):
         print "e: %s" % e
         lg.info(json1.json_last_log_msg())
         sys.exit(msg)
-    finally:
+    else:
         lg.info(json1.json_pdf_to_pngs_success(pdf_file_spec,png_files))
         return png_files
 
