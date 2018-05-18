@@ -79,13 +79,20 @@ def pdf_to_pngs(pdf_file,output_dir):
     """
     input_file_sans_suffix, input_file_suffix = os.path.splitext(pdf_file)
     maybe_dir, input_file_name_only = os.path.split(input_file_sans_suffix)
+    number_of_pages = None
     outfile_root = input_file_name_only
     # determine number of pages
     reader = PyPDF2.PdfFileReader(file(pdf_file, "rb"))
-    number_of_pages = reader.getNumPages()
+    # getNumPages can fail if the PDF, or an object therein, is
+    # corrupt
+    try:
+        number_of_pages = reader.getNumPages()
+    except Exception as e:
+        lg.error(json1.json_msg(109, "Failure to open or parse a PDF file -- possible indication of a corrupt PDF",None,file=pdf_file))
+        raise e
     # Qs:
     # 1. advantages/disadvantages of gs and pdftoppm = ?
-    # 2. is there really no way to just scan directly from PDF, specifying page # as we go?
+    # 2. is there really no way to just scan directly from PDF, specifying page number as we go?
     return pdf_to_pngs__pdftoppm(pdf_file, number_of_pages, outfile_root, output_dir)
 
 def pdf_to_pngs__gs (pdf_file, number_of_pages, outfile_root, output_dir):
