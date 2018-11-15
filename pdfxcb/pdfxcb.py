@@ -331,7 +331,6 @@ def main():
         identifier = args.identifier
     else:
         identifier = str(uuid.uuid1())
-    lg.info(json1.json_first_log_msg(identifier))
     # 1000[0-9][0-9][0-9]$ matches on tt user id
     match_re_string = args.match_re_string
     lg.debug(match_re_string)
@@ -340,6 +339,7 @@ def main():
         match_re = re.compile(match_re_string)
     pdf_file_spec = args.input_files[0]
     lg.debug(pdf_file_spec)
+    lg.info(json1.json_first_log_msg(identifier, files = [pdf_file_spec] ))
     # generic debugging
     lg.debug(os.getcwd())         # current/working directory
     # might also want to import platform to get architecture, other details...
