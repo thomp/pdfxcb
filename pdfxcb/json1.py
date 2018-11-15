@@ -87,10 +87,11 @@ def json_directory_not_found(dir):
                     'Directory not found; directory: {}'.format(dir),
                     False,None)
 
-def json_first_log_msg(identifier):
+def json_first_log_msg(identifier,files=None):
     """Return a string. Use for the first log message."""
     obj = json_msg_obj(3,"Initial log message")
     obj['id'] = identifier
+    obj['files'] = files
     return json.dumps(obj)
 
 def json_last_log_msg():
@@ -134,11 +135,6 @@ def json_failed_to_parse_file(exception,someFile):
 def json_file_not_found(file):
     return json_msg(132,
                     'File not found; file: {}'.format(file),
-                    False,None)
-
-def json_zero_page_test(xyFile):
-    return json_msg(132,
-                    'XY file suggests that the test has 0 pages; file: {}'.format(xyFile),
                     False,None)
 
 # FILES is an array where each member is a string specifying the location of a diagnostic image file. This is only generated if debug_p flag is set in code of interest.
