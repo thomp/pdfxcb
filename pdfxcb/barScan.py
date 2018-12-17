@@ -105,12 +105,38 @@ def barcodeScan(imagePNGPath, scan_region):
         # crop box is 4-tuple: left,upper,right,lower
         pilCropBox = [cropLeft,cropTop,cropRight,cropBottom]
         pilCropped = pil.crop(pilCropBox)
-    # Two options for leveraging zbar: (1) via shell invocation and (2) via python zbar library
-    #barcodeString = barcodeScan_zbarimg (pil)
-    barcodeString = barcodeScan_python_zbar_sub (pilCropped) # pil
+    #  zbar sometimes catches a barcode at a lower resolution but misses it at a higher resolution. Scan for barcode with several variants of image specified by IMAGE_FILE_SPEC.
+    barcodeString = barcode_scan_at_resolutions(pilCropped,None)
     if ( not barcodeString ):
-            lg.warn(json1.json_barcode_not_found_msg([imagePNGPath],""));
+            lg.warn(json1.json_barcode_not_found_msg([imagePNGPath],""))
     return barcodeString
+
+def barcode_scan_at_resolutions (pil,scale_values):
+    """
+    Try scans at multiple image resolutions since zbar sometimes is befuddled by high resolution images.
+    """
+    if scale_values == [] :
+        # done - empty array indicates all scale values have been tried
+        return None;
+    elif ( not scale_values ):
+        # Options for leveraging zbar: (1) via shell invocation and (2) via python zbar library
+        #barcodeString = barcodeScan_zbarimg (pil)
+        barcodeString = barcodeScan_python_zbar_sub (pil)
+        if ( barcodeString ):
+            return barcodeString
+        else:
+            scale_values = [ 0.5 ]
+            return barcode_scan_at_resolutions(pil,scale_values)
+    else:
+        scale_value = scale_values.pop()
+        resize_x = int(round(scale_value * pil.size[0]))
+        resize_y = int(round(scale_value * pil.size[1]))
+        pil_scaled = pil.resize( (resize_x, resize_y) )
+        barcodeString = barcodeScan_python_zbar_sub (pil_scaled)
+        if ( barcodeString ):
+            return barcodeString
+        else:
+            return barcode_scan_at_resolutions(pil,scale_values)
 
 def barcodeScan_zbarimg (pil):
     """
