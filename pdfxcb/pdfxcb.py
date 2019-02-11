@@ -70,6 +70,7 @@ import PyPDF2
 
 # handle external signals requesting termination
 def signal_handler(signal, frame):
+    # Ensure receipt of signal is logged prior to terminating
     msg = json1.json_exit_on_external_request_msg()
     lg.error(msg)
     lg.info(json1.json_last_log_msg())
@@ -83,21 +84,22 @@ signal.signal(signal.SIGTERM, signal_handler)
 #
 # function definitions
 #
-def locate_cover_sheets (png_files,containing_dir,match_re):
+def locate_cover_sheets (png_file_tuples,containing_dir,match_re,scan_region):
     """
-    Given the list of files specified by PNG_FILES and CONTAINING_DIR, identify those files containing a barcode. Return multiple values: a list of the corresponding indices and a list of the corresponding barcodes.
+    Given the list of files specified by PNG_FILE_TUPLES (tuples where the first member specifies the name of the PNG file) and CONTAINING_DIR,
+    identify those files containing a barcode. Return multiple values: a list of the
+    corresponding barcodes and a list of the corresponding indices.
     """
     barcodes = []
     indices = []
     # I: index in IMAGE_FILES
     i = 0
-    i_max = len(png_files)
+    i_max = len(png_file_tuples)
     while (i<i_max):
         # log progress by default (otherwise, this can be a long period of silence...)
-        lg.info(json1.json_progress("looking for barcode on page " + str(i) + " of " + str(i_max) + " png files"))
-        image_file_spec = os.path.join(containing_dir,png_files[i])
+        lg.info(json1.json_progress("looking for barcode on " + str(i) + " of " + str(i_max) + " PNG files"))
+        image_file_spec = os.path.join(containing_dir,png_file_tuples[i][0])
         lg.debug(image_file_spec)
-        scan_region = ([0,0,0.7,0.5])
         maybe_barcode = barScan.barcodeScan(
             image_file_spec,
             scan_region         # None
@@ -111,8 +113,8 @@ def locate_cover_sheets (png_files,containing_dir,match_re):
                 barcodes.append(maybe_barcode)
                 indices.append(i)
         i = i+1
-        lg.debug(barcodes)
-        lg.debug(indices)
+        #lg.debug(barcodes)
+        #lg.debug(indices)
     return barcodes,indices
 
 def executable_sanity_checks (executables):
@@ -131,16 +133,25 @@ def generate_output_file_names(cover_sheet_barcodes,cover_sheet_indices,output_d
     file_names = []
     for cover_sheet_barcode,cover_sheet_index in zip(cover_sheet_barcodes,cover_sheet_indices):
         cover_sheet_index_as_string = str.format("{0:0>03d}", cover_sheet_index)
-        file_name = cover_sheet_barcode + "-" + cover_sheet_index_as_string + ".pdf"
-        file_names.append(os.path.join(output_dir,file_name))
+        version = -1
+        # sanity check on version (completely arbitrary at this point)
+        max_version = 99
+        while (not version >= max_version and (version < 0 or os.path.exists(path))):
+            version = version + 1
+            file_name = cover_sheet_barcode + "-" + cover_sheet_index_as_string + "-" + str(version) + ".pdf"
+            path = os.path.join(output_dir,file_name)
+        file_names.append(path)
     return file_names
 
-def generate_page_ranges(cover_sheet_indices,number_of_pages):
+def generate_page_ranges(cover_sheet_indices,png_file_page_number_tuples,number_of_pages):
+    """
+    Calling code must guarantee that tuples in png_file_page_number_tuples are ordered (ascending) with respect to page numbers.
+    """
     # to capture last set of pages, tag on an imaginary cover sheet at the end
     cover_sheet_indices.append(number_of_pages)
     page_ranges = []
     for cover_sheet_index, next_cover_sheet_index in zip(cover_sheet_indices[:-1],cover_sheet_indices[1:]):
-        page_ranges.append((cover_sheet_index, next_cover_sheet_index-1))
+        page_ranges.append((png_file_page_number_tuples[cover_sheet_index][1], png_file_page_number_tuples[next_cover_sheet_index-1][1]))
     return page_ranges
 
 def sanity_checks (dirs,files):
@@ -157,27 +168,61 @@ def sanity_checks (dirs,files):
     ]
     module_sanity_checks (required_modules,True)
 
-def pdfxcb (pdf_file_spec,output_dir,match_re):
+def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
     """
-    Given the file specified by PDF_FILE_SPEC, look for cover sheets and split the PDF at each coversheet. Name output file(s) based on cover sheet content. Write files to directory specified by OUTPUT_DIR. If MATCH_RE is defined, ignore barcodes unless the corresponding string matches the regex MATCH_RE.
+    Given the file specified by PDF_FILE_SPEC, look for cover sheets
+    and split the PDF at each coversheet. Name output file(s) based on
+    cover sheet content. Write files to directory specified by
+    OUTPUT_DIR. Return True. If MATCH_RE is defined, ignore barcodes
+    unless the corresponding string matches the regex MATCH_RE. Use
+    RASTERIZE_P = False if the PDF does not contain vector graphics
+    but is solely bitmap data (e.g., the PDF was generated from a
+    scanned document).
     """
     global lg
     # sanity checks
     sanity_checks([output_dir],[pdf_file_spec])
-    # extract PDF pages as image data (PNG files)
-    png_files = split_pdf_to_png_files(pdf_file_spec,output_dir)
-    lg.debug(png_files)
+    # If confident that the PDF under analysis is derived from a scan
+    # (i.e., contains only bitmap data), then the images embedded in
+    # the PDF can be analyzed directly. If the PDF may contain vector
+    # data on the cover sheet pages, then rasterization is indicated.
+    # See doc/optimization.md for notes on time implications.
+
+    # FIXME: consider having a single call here -- FOO -- that specializes on rasterize_p
+    if rasterize_p:
+        # extract PDF pages as image data (PNG files)
+        #
+        # FIXME: split_pdf_to_png_files doesn't yet return page numbers
+        png_file_page_number_tuples = split_pdf_to_png_files(pdf_file_spec,output_dir)
+    else:
+        # extract images directly from PDF
+        png_file_page_number_tuples = invoke_pdfimages_on(pdf_file_spec,output_dir)
+    # Code below expects png_file_page_number_tuples to be ordered with respect to page number.
+    # Note that sorted default is ascending order.
+    png_file_page_number_tuples = sorted(png_file_page_number_tuples,
+                                         key=lambda tuple: tuple[1])
+    #
     # locate cover sheets
-    cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_files,output_dir,match_re)
+    #
+    if rasterize_p:
+        # possibilities:
+        # 1. png files represent rasterized pages
+        scan_region = ([0,0,0.7,0.5])
+    else:
+        # 2. png files represent images from PDF (via pdfimages)
+        scan_region = ([0,0,1,1])
+    cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_file_page_number_tuples,output_dir,match_re,scan_region)
+    print(cover_sheet_barcodes)
     lg.debug(cover_sheet_barcodes)
     lg.debug(cover_sheet_indices)
-    clean_up_png_files = False # True
+    # Setting to False supports debugging/development. This should be set to True in production.
+    clean_up_png_files = False # False # True
     if clean_up_png_files:
-        for png_file in png_files:
-            os.remove(os.path.join(output_dir,png_file))
+        for png_file_tuple in png_file_page_number_tuples:
+            os.remove(os.path.join(output_dir,png_file_tuple[0]))
     # write PDFs
-    pdf_length = len(png_files)
-    page_ranges = generate_page_ranges(cover_sheet_indices,pdf_length)
+    pdf_length = pdf.pdf_number_of_pages(pdf_file_spec) # len(png_files) only works if PNGs are rasterized pages
+    page_ranges = generate_page_ranges(cover_sheet_indices,png_file_page_number_tuples,pdf_length)
     output_file_names = generate_output_file_names(cover_sheet_barcodes,cover_sheet_indices,output_dir)
     lg.debug(output_file_names)
     pdf.pdf_split(pdf_file_spec,output_file_names,page_ranges)
@@ -214,6 +259,38 @@ def file_sanity_checks (files,exitp):
     for file in files:
         file_sanity_check(file,True)
 
+def invoke_pdfimages_on (pdf_file_spec,output_dir):
+    """
+    Extract images in PDF file specified by PDF_FILE_SPEC into a
+    series of files, each representing a single PNG image. Write files
+    to directory specified by OUTPUT_DIR.
+
+Returns a list of tuples where each tuple has the structure (png_file,png_file_page_number)
+png_file_page_number is an integer.
+List is an ordered sequence with respect to page number - low to high
+    """
+    png_file_page_number_tuples = None
+    try:
+        # sanity check
+        if not os.path.isabs(pdf_file_spec):
+            msg = "The input PDF must be specified as an absolute file path"
+            lg.error(json1.json_msg(108,[msg],False,files=[pdf_file_spec]))
+            sys.exit(msg)
+        else:
+            png_file_page_number_tuples = pdf.pdfimages(pdf_file_spec,output_dir)
+    except Exception as e:
+        lg.debug(str(e))
+        msg = json1.json_failed_to_convert_pdf(e,pdf_file_spec)
+        lg.error(msg)
+        lg.info(json1.json_last_log_msg())
+        sys.exit(msg)
+    else:
+        # Is it really import to log png files? (Need to dig them out of tuples...)
+        lg.info(json1.json_pdf_to_pngs_success(pdf_file_spec,
+                                               None #png_files
+        ))
+        return png_file_page_number_tuples
+
 def module_sanity_checks (module_names,exitp):
     """MODULE_NAMES is a sequence of strings"""
     for module_name in module_names:
@@ -236,10 +313,12 @@ def split_pdf_to_png_files (pdf_file_spec,output_dir):
     png_files = None
     try:
         # sanity check
-        assert os.path.isabs(pdf_file_spec)
-        lg.debug(100)
-        #util.assert_file_exists_p(path)
-        png_files = pdf.pdf_to_pngs(pdf_file_spec,output_dir)
+        if not os.path.isabs(pdf_file_spec):
+            msg = "The input PDF must be specified as an absolute file path"
+            lg.error(json1.json_msg(108,[msg],False,files=[pdf_file_spec]))
+            sys.exit(msg)
+        else:
+            png_files = pdf.pdf_to_pngs(pdf_file_spec,output_dir)
     except Exception as e:
         msg = json1.json_failed_to_convert_pdf(e,pdf_file_spec)
         lg.error(msg)
