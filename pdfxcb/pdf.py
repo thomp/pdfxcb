@@ -25,6 +25,7 @@
 #
 import io
 import os
+import re
 import subprocess
 import PyPDF2
 
@@ -34,6 +35,21 @@ lg=logging
 
 # internal/busca modules
 import json1
+
+def pdf_number_of_pages(pdf_file):
+    """
+    Return an integer.
+    """
+    # determine number of pages
+    reader = PyPDF2.PdfFileReader(file(pdf_file, "rb"))
+    # getNumPages can fail if the PDF, or an object therein, is
+    # corrupt
+    try:
+        return reader.getNumPages()
+    except Exception as e:
+        lg.error(json1.json_msg(109, "Failure to open or parse a PDF file -- possible indication of a corrupt PDF",None,file=pdf_file))
+        raise e
+
 
 def pdf_page_to_png(src_pdf, pagenum = 0, resolution = 72):
     """
@@ -87,6 +103,7 @@ def pdf_to_pngs(pdf_file,output_dir):
     # corrupt
     try:
         number_of_pages = reader.getNumPages()
+        lg.info(json1.json_pdf_info(number_of_pages))
     except Exception as e:
         lg.error(json1.json_msg(109, "Failure to open or parse a PDF file -- possible indication of a corrupt PDF",None,file=pdf_file))
         raise e
@@ -177,3 +194,43 @@ def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root, output_dir):
             output_dir_and_filename,pagenumber+1);
         png_files.append(png_infile)
     return png_files
+
+#
+# pdfimages
+#
+def pdfimages(pdf_file,output_dir):
+    """
+    Generate PNG files, one corresponding to each image in the PDF
+    file PDF_FILE. Write files to directory specified by OUTPUT_DIR.
+
+    Return tuples where each member has the form (PNG file names, page number)
+    (where the first page in the document is numbered as 1).
+    """
+    input_file_sans_suffix, input_file_suffix = os.path.splitext(pdf_file)
+    maybe_dir, input_file_name_only = os.path.split(input_file_sans_suffix)
+    outfile_root = input_file_name_only
+    output_dir_and_filename = os.path.join(output_dir,outfile_root)
+    returncode = subprocess.call(
+        ["pdfimages", "-p", "-png", pdf_file, output_dir_and_filename],
+        shell=False)
+    if (returncode == 0):
+        # FIXME: this is a problem if other programs rely on this -- should be in docstring if it's guaranteed to log this
+        #lg.info(json1.json_completed_pdf_to_ppm(page_number,number_of_pages))
+        lg.info(json1.json_completed_pdf_to_ppm(-1,-1))
+    else:
+        lg.error(json1.json_failed_to_convert_pdf(None,pdf_file))
+    # return values
+    png_file_page_number_tuples=[]
+    # file names have the form <image root>-<page number>-<image number>.png where the numbers are 3-digit zero-padded values
+    # - it would be great if pdfimages, w/o a single invocation, could (1) extract images *and* (2) provide list of images
+    dir_files = os.listdir(output_dir)
+    outfile_root_re = re.compile("^"+outfile_root+"-(\d{1,3}\d{1,3}\d{1,3})-\d{1,3}\d{1,3}\d{1,3}\.png$")
+    for dir_file in dir_files:
+        png_file_match = outfile_root_re.match(dir_file)
+        if png_file_match:
+            png_file_page_number_tuples.append(
+                ( png_file_match.group(),
+                  int(png_file_match.group(1))
+                )
+            )
+    return png_file_page_number_tuples
