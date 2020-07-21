@@ -91,7 +91,9 @@ def pdf_split_internal (pdf_file_reader,pdf_file_writer,page_range):
 
 def pdf_to_pngs(pdf_file,output_dir):
     """
-    Generate PNG files, one corresponding to each page of the PDF file PDF_FILE. Write files to directory specified by OUTPUT_DIR. Return a list of the PNG file names.
+    Generate PNG files, one corresponding to each page of the PDF file
+    PDF_FILE. Write files to directory specified by OUTPUT_DIR. Return
+    a list of the PNG file names.
     """
     input_file_sans_suffix, input_file_suffix = os.path.splitext(pdf_file)
     maybe_dir, input_file_name_only = os.path.split(input_file_sans_suffix)
@@ -164,20 +166,27 @@ def pdf_to_pngs__gs_file_names (number_of_pages,outfile_root):
 
 def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root, output_dir):
     """
-    Helper relying on pdftoppm. Return a list of file names. OUTFILE_ROOT is the filename only (no directory information).
+    Helper relying on pdftoppm. OUTFILE_ROOT is the filename only (no
+    directory information). Return a list where each member has the
+    form (<file name>,<page number>) with page numbering beginning at
+    one.
     """
     output_dir_and_filename = os.path.join(output_dir,outfile_root)
+    # Q: what is the point of calling pdftoppm repeatedly on each page, one at a time? doesn't this generate the exact same set of files as calling it just once w/o the -f and -l options?
     for page_number in range(number_of_pages):
         returncode = subprocess.call(
-            ["pdftoppm", "-f", str(page_number), "-l", str(page_number), "-gray", "-png", pdf_file, output_dir_and_filename],
+            ["pdftoppm", "-f", str(page_number+1), "-l", str(page_number+1), "-gray", "-png", pdf_file, output_dir_and_filename],
             shell=False)
         if (returncode == 0):
             lg.info(json1.json_completed_pdf_to_ppm(page_number,number_of_pages))
         else:
             lg.error(json1.json_failed_to_convert_pdf(None,pdf_file))
-    # return file names
-    png_files=[]
-    # due to the pdftoppm limitations, we have to plan ahead for the file names, anticipating pdftoppm's default non-configurable behavior...
+    # Return an array where each member has the form
+    # (<file name>,<page number>)
+    return_value = []
+    # Due to the inability to configure the output file name format
+    # for pdftoppm, plan ahead for the file names, anticipating
+    # pdftoppm's default non-configurable behavior.
     index_format_string = ""
     if ( number_of_pages < 10 ):
         index_format_string = "{1:d}"

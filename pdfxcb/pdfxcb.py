@@ -309,7 +309,11 @@ def module_sanity_check (module_name,exitp):
             sys.exit(msg)
 
 def split_pdf_to_png_files (pdf_file_spec,output_dir):
-    """Split PDF file specified by PDF_FILE_SPEC into a series of files, each representing a single page as a PNG image. Write files to directory specified by OUTPUT_DIR."""
+    """
+    Split the PDF file specified by PDF_FILE_SPEC into a series of
+    files, each representing a single page as a PNG image. Write files
+    to directory specified by OUTPUT_DIR.
+    """
     png_files = None
     try:
         # sanity check

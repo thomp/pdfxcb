@@ -155,7 +155,13 @@ def json_msg_bubble_not_found(files,msg,rect,dim,page_n):
     return json_msg(133, message, False, data=data)
 
 def json_msg_bubbles_not_found(file,msg):
-    """FILE is a single string specifying the location of a diagnostic image file. MSG is additional data encapsulated as a string. This is intended to be used to provide summary information to the end user. Individual bubble issues should be logged with json_msg_bubble_not_found."""
+    """
+    FILE is a single string specifying the location of a diagnostic
+    image file. MSG is additional data encapsulated as a string. This
+    is intended to be used to provide summary information to the end
+    user. Individual bubble issues should be logged with
+    json_msg_bubble_not_found.
+    """
     message = ['Unable to find one or more bubbles', 'see diagnostic image file']
     if msg:
         message.append(msg)
