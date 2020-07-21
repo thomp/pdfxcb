@@ -179,9 +179,16 @@ def json_pdf_info(number_of_pages):
     pdf_data = { 'number_of_pages': number_of_pages }
     return json_msg(70, "PDF information", False, data=pdf_data)
 
-def json_pdf_to_pngs_success(pdffile,pngfiles):
-    """Return a string"""
-    return json_msg(10,"Successfully converted PDF to PNG(s)",False, pdffile=pdffile, pngfiles=pngfiles)
+def json_pdf_to_pngs_success(pdffile,png_specs):
+    """
+    Return a string. PNG_SPECS is an array of (<file_name>,<page_number>)
+    tuples.
+    """
+    return json_msg(10,
+                    "Successfully converted PDF to PNG(s)",
+                    False,
+                    pdffile=pdffile
+    )
 
 def json_progress(progress_message):
     """
