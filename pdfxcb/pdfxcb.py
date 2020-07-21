@@ -265,9 +265,10 @@ def invoke_pdfimages_on (pdf_file_spec,output_dir):
     series of files, each representing a single PNG image. Write files
     to directory specified by OUTPUT_DIR.
 
-Returns a list of tuples where each tuple has the structure (png_file,png_file_page_number)
-png_file_page_number is an integer.
-List is an ordered sequence with respect to page number - low to high
+    Returns a list of tuples where each tuple has the structure
+    (png_file,png_file_page_number) png_file_page_number is an
+    integer. The list is an ordered sequence with respect to page
+    number - low to high.
     """
     png_file_page_number_tuples = None
     try:

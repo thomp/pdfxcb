@@ -71,7 +71,11 @@ def pdf_page_to_png(src_pdf, pagenum = 0, resolution = 72):
 
 def pdf_split(input_pdf_file,output_files,page_ranges):
     """
-    INPUT_PDF_FILE is a string representing the path to a PDF file. OUTPUT_FILES is a list of strings representing paths to output files corresponding to the specified page ranges.
+    INPUT_PDF_FILE is a string representing the path to a PDF file.
+    OUTPUT_FILES is a list of strings representing paths to output
+    files corresponding to the specified page ranges. PAGE_RANGES is
+    an array of tuples where each tuple specifies the first page and
+    the last page of a given set of pages.
     """
     reader = PyPDF2.PdfFileReader(input_pdf_file)
     for output_file, page_range in zip(output_files,page_ranges):
@@ -83,9 +87,14 @@ def pdf_split(input_pdf_file,output_files,page_ranges):
 
 def pdf_split_internal (pdf_file_reader,pdf_file_writer,page_range):
     """
-    Add the pages, specified by PAGE_RANGE, from specified reader object to the specified writer object. PAGE_RANGE is a tuple where the elements are integers defining the first and last page (inclusive) in the page range. Page count begins at 0.
+    Add the pages, specified by PAGE_RANGE, from specified reader
+    object to the specified writer object. PAGE_RANGE is a tuple where
+    the elements are integers defining the first and last page
+    (inclusive) in the page range. Page count begins at 1.
     """
-    pages = list(range(page_range[0],page_range[1]+1))
+    # The reader and writer are PyPDF2 objects. Adjust page numbers as
+    # PyPDF2 counts pages beginning at zero.
+    pages = list(range(page_range[0]-1,page_range[1]))
     for page_index in pages:
         pdf_file_writer.addPage(pdf_file_reader.getPage(page_index))
 
