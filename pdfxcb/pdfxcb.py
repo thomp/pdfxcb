@@ -414,11 +414,12 @@ def main():
     pdf_file_spec = args.input_files[0]
     lg.debug(pdf_file_spec)
     lg.info(json1.json_first_log_msg(identifier, files = [pdf_file_spec] ))
+    rasterize_p = False
     # generic debugging
     lg.debug(os.getcwd())         # current/working directory
     # might also want to import platform to get architecture, other details...
     try:
-        pdfxcb(pdf_file_spec,args.output_dir,match_re)
+        pdfxcb(pdf_file_spec,args.output_dir,match_re,rasterize_p)
     except Exception as e:
         lg.error("Crash and burn")
         lg.error(sys.exc_info()[0])
