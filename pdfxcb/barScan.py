@@ -174,7 +174,7 @@ def barcodeScan_python_zbar_sub (pilCropped):
         lg.debug("symbol: %s",symbol)
         barcodeString = symbol.data
         #barcodeType = symbol.type
-    lg.debug("barcodeScan.90: %s",barcodeString)
+    lg.debug("barcodeScan_python_zbar_sub.90: %s",barcodeString)
     # clean up (destroy the image object to free up references to the data and symbols)
     # - note: if another image will be scanned, it's also possible to simply recycle the image object
     del(image)
