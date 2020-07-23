@@ -195,7 +195,7 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
         scan_region = ([0,0,0.7,0.5])
     else:
         # 2. png files represent images from PDF (via pdfimages)
-        scan_region = ([0,0,1,1])
+        scan_region = None # None is not treated as the equivalent of ([0,0,1,1]). ([0,0,1,1]) triggers cropping by barcodeScan.
     cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_file_page_number_tuples,output_dir,match_re,scan_region)
     print(cover_sheet_barcodes)
     lg.debug(cover_sheet_barcodes)
