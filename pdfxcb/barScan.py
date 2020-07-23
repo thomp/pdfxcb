@@ -63,14 +63,18 @@ from PIL import Image
 def barcodeScan(imagePNGPath, scan_region):
     """
     Return None if a barcode was not found. If a barcode was found,
-    return a string corresponding to the barcode-encoded data. Search
-    within the region defined by SCAN_REGION when SCAN_REGION is a
-    list. If SCAN_REGION is not a list, the full image is analyzed.
-    When SCAN_REGION is a list, it specifies two points as
+    return a string corresponding to the barcode-encoded data.
+
+    Search within the region defined by SCAN_REGION when SCAN_REGION
+    is a list. When SCAN_REGION is a list, it specifies two points as
     [x1,y1,x2,y2]. These two points (x1,y1) and (x2,y2) are pairs
     (x,y) of percentages (each expressed as a value between 0 and 1.0)
     relative to the dimensions of the image; they define the box
     within which the barcode scan occurs.
+
+    If SCAN_REGION is not a list, the full image is analyzed. If
+    analysis of the full image is desirable, do not set SCAN_REGION to
+    [0,0,1,1] but instead set it to None or some other non-list value.
     """
     # sanity check(s)
     if not isinstance(scan_region,list):
