@@ -390,6 +390,11 @@ def main():
     for handler in lg.getLogger().handlers:
         lg.getLogger().removeHandler(handler)
     formatter = logging.Formatter(json_log_format)
+    # sanity check for existence of log file directory
+    if (os.path.dirname(logfile) and
+        not os.path.exists(os.path.dirname(logfile))):
+        raise Exception(str.format("log file directory {0} not present",
+                                   os.path.dirname(logfile)))
     file_handler = logging.FileHandler(logfile,'w')
     file_handler.setFormatter(formatter)
     lg.getLogger().addHandler(file_handler)
