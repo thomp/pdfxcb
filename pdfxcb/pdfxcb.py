@@ -308,7 +308,8 @@ def split_pdf_to_png_files (pdf_file_spec,output_dir):
             lg.error(json1.json_msg(108,[msg],False,files=[pdf_file_spec]))
             sys.exit(msg)
         else:
-            png_files = pdf.pdf_to_pngs(pdf_file_spec,output_dir)
+            # array of (<file_name>,<page_number>) tuples
+            png_specs = pdf.pdf_to_pngs(pdf_file_spec,output_dir)
     except Exception as e:
         msg = json1.json_failed_to_convert_pdf(e,pdf_file_spec)
         lg.error(msg)
@@ -317,8 +318,8 @@ def split_pdf_to_png_files (pdf_file_spec,output_dir):
         lg.info(json1.json_last_log_msg())
         sys.exit(msg)
     else:
-        lg.info(json1.json_pdf_to_pngs_success(pdf_file_spec,png_files))
-        return png_files
+        lg.info(json1.json_pdf_to_pngs_success(pdf_file_spec,png_specs))
+        return png_specs
 
 def write_page_scores(page_scores, output_file):
     f = open(output_file, 'w')
