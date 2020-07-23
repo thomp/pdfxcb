@@ -18,9 +18,8 @@ import json1
 
 def pdf_number_of_pages(pdf_file):
     """
-    Return an integer.
+    Determine the number of pages in a PDF document. Return an integer.
     """
-    # determine number of pages
     reader = PyPDF2.PdfFileReader(file(pdf_file, "rb"))
     # getNumPages can fail if the PDF, or an object therein, is
     # corrupt
