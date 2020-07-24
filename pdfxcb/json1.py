@@ -1,21 +1,7 @@
-# -*- coding: utf-8 -*-
+"""Convenience functions for logging in JSON
+"""
 
-# (c) 2018 David A. Thompson <thompdump@gmail.com>
-#
-# This file is part of pdfxcb
-#
-# pdfxcb is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# pdfxcb is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with pdfxcb. If not, see <http://www.gnu.org/licenses/>.
+# Author: David A. Thompson
 
 import json
 import datetime
@@ -155,7 +141,13 @@ def json_msg_bubble_not_found(files,msg,rect,dim,page_n):
     return json_msg(133, message, False, data=data)
 
 def json_msg_bubbles_not_found(file,msg):
-    """FILE is a single string specifying the location of a diagnostic image file. MSG is additional data encapsulated as a string. This is intended to be used to provide summary information to the end user. Individual bubble issues should be logged with json_msg_bubble_not_found."""
+    """
+    FILE is a single string specifying the location of a diagnostic
+    image file. MSG is additional data encapsulated as a string. This
+    is intended to be used to provide summary information to the end
+    user. Individual bubble issues should be logged with
+    json_msg_bubble_not_found.
+    """
     message = ['Unable to find one or more bubbles', 'see diagnostic image file']
     if msg:
         message.append(msg)
@@ -173,9 +165,16 @@ def json_pdf_info(number_of_pages):
     pdf_data = { 'number_of_pages': number_of_pages }
     return json_msg(70, "PDF information", False, data=pdf_data)
 
-def json_pdf_to_pngs_success(pdffile,pngfiles):
-    """Return a string"""
-    return json_msg(10,"Successfully converted PDF to PNG(s)",False, pdffile=pdffile, pngfiles=pngfiles)
+def json_pdf_to_pngs_success(pdffile,png_specs):
+    """
+    Return a string. PNG_SPECS is an array of (<file_name>,<page_number>)
+    tuples.
+    """
+    return json_msg(10,
+                    "Successfully converted PDF to PNG(s)",
+                    False,
+                    pdffile=pdffile
+    )
 
 def json_progress(progress_message):
     """

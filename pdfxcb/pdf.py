@@ -1,28 +1,8 @@
-# -*- coding: utf-8 -*-
+"""Generate PNG files for the pages in a PDF document
+"""
 
-# (c) 2018 David A. Thompson <thompdump@gmail.com>
-#
-# This file is part of pdfxcb
-#
-# pdfxcb is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# pdfxcb is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with pdfxcb. If not, see <http://www.gnu.org/licenses/>.
+# Author: David A. Thompson
 
-#
-# pdf.py
-#
-#   1. accepts an input file (PDF)
-#   2. generates a set of PNG files for the pages in the input file
-#
 import io
 import os
 import re
@@ -33,14 +13,13 @@ import PyPDF2
 import logging
 lg=logging
 
-# internal/busca modules
+# internal modules
 import json1
 
 def pdf_number_of_pages(pdf_file):
     """
-    Return an integer.
+    Determine the number of pages in a PDF document. Return an integer.
     """
-    # determine number of pages
     reader = PyPDF2.PdfFileReader(file(pdf_file, "rb"))
     # getNumPages can fail if the PDF, or an object therein, is
     # corrupt
@@ -49,7 +28,6 @@ def pdf_number_of_pages(pdf_file):
     except Exception as e:
         lg.error(json1.json_msg(109, "Failure to open or parse a PDF file -- possible indication of a corrupt PDF",None,file=pdf_file))
         raise e
-
 
 def pdf_page_to_png(src_pdf, pagenum = 0, resolution = 72):
     """
@@ -71,7 +49,11 @@ def pdf_page_to_png(src_pdf, pagenum = 0, resolution = 72):
 
 def pdf_split(input_pdf_file,output_files,page_ranges):
     """
-    INPUT_PDF_FILE is a string representing the path to a PDF file. OUTPUT_FILES is a list of strings representing paths to output files corresponding to the specified page ranges.
+    INPUT_PDF_FILE is a string representing the path to a PDF file.
+    OUTPUT_FILES is a list of strings representing paths to output
+    files corresponding to the specified page ranges. PAGE_RANGES is
+    an array of tuples where each tuple specifies the first page and
+    the last page of a given set of pages.
     """
     reader = PyPDF2.PdfFileReader(input_pdf_file)
     for output_file, page_range in zip(output_files,page_ranges):
@@ -83,15 +65,22 @@ def pdf_split(input_pdf_file,output_files,page_ranges):
 
 def pdf_split_internal (pdf_file_reader,pdf_file_writer,page_range):
     """
-    Add the pages, specified by PAGE_RANGE, from specified reader object to the specified writer object. PAGE_RANGE is a tuple where the elements are integers defining the first and last page (inclusive) in the page range. Page count begins at 0.
+    Add the pages, specified by PAGE_RANGE, from specified reader
+    object to the specified writer object. PAGE_RANGE is a tuple where
+    the elements are integers defining the first and last page
+    (inclusive) in the page range. Page count begins at 1.
     """
-    pages = list(range(page_range[0],page_range[1]+1))
+    # The reader and writer are PyPDF2 objects. Adjust page numbers as
+    # PyPDF2 counts pages beginning at zero.
+    pages = list(range(page_range[0]-1,page_range[1]))
     for page_index in pages:
         pdf_file_writer.addPage(pdf_file_reader.getPage(page_index))
 
 def pdf_to_pngs(pdf_file,output_dir):
     """
-    Generate PNG files, one corresponding to each page of the PDF file PDF_FILE. Write files to directory specified by OUTPUT_DIR. Return a list of the PNG file names.
+    Generate PNG files, one corresponding to each page of the PDF file
+    PDF_FILE. Write files to directory specified by OUTPUT_DIR. Return
+    a list of the PNG file names.
     """
     input_file_sans_suffix, input_file_suffix = os.path.splitext(pdf_file)
     maybe_dir, input_file_name_only = os.path.split(input_file_sans_suffix)
@@ -164,20 +153,27 @@ def pdf_to_pngs__gs_file_names (number_of_pages,outfile_root):
 
 def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root, output_dir):
     """
-    Helper relying on pdftoppm. Return a list of file names. OUTFILE_ROOT is the filename only (no directory information).
+    Helper relying on pdftoppm. OUTFILE_ROOT is the filename only (no
+    directory information). Return a list where each member has the
+    form (<file name>,<page number>) with page numbering beginning at
+    one.
     """
     output_dir_and_filename = os.path.join(output_dir,outfile_root)
+    # Q: what is the point of calling pdftoppm repeatedly on each page, one at a time? doesn't this generate the exact same set of files as calling it just once w/o the -f and -l options?
     for page_number in range(number_of_pages):
         returncode = subprocess.call(
-            ["pdftoppm", "-f", str(page_number), "-l", str(page_number), "-gray", "-png", pdf_file, output_dir_and_filename],
+            ["pdftoppm", "-f", str(page_number+1), "-l", str(page_number+1), "-gray", "-png", pdf_file, output_dir_and_filename],
             shell=False)
         if (returncode == 0):
             lg.info(json1.json_completed_pdf_to_ppm(page_number,number_of_pages))
         else:
             lg.error(json1.json_failed_to_convert_pdf(None,pdf_file))
-    # return file names
-    png_files=[]
-    # due to the pdftoppm limitations, we have to plan ahead for the file names, anticipating pdftoppm's default non-configurable behavior...
+    # Return an array where each member has the form
+    # (<file name>,<page number>)
+    return_value = []
+    # Due to the inability to configure the output file name format
+    # for pdftoppm, plan ahead for the file names, anticipating
+    # pdftoppm's default non-configurable behavior.
     index_format_string = ""
     if ( number_of_pages < 10 ):
         index_format_string = "{1:d}"
@@ -189,11 +185,11 @@ def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root, output_dir):
         raise Exception('no support (at this point) for page count exceeding 1000 pages')
     string_format_string = "{0}-" + index_format_string + ".png"
     for pagenumber in range(number_of_pages):
-        png_infile = str.format(
+        png_file = str.format(
             string_format_string,
             output_dir_and_filename,pagenumber+1);
-        png_files.append(png_infile)
-    return png_files
+        return_value.append((png_file,pagenumber))
+    return return_value
 
 #
 # pdfimages

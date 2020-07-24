@@ -1,21 +1,7 @@
-# -*- coding: utf-8 -*-
+"""Find a barcode in an image
+"""
 
-# (c) 2018 David A. Thompson <thompdump@gmail.com>
-#
-# This file is part of pdfxcb
-#
-# pdfxcb is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# pdfxcb is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with pdfxcb. If not, see <http://www.gnu.org/licenses/>.
+# Author: David A. Thompson
 
 # If relying on CV2 for image manipulation
 #import cv2
@@ -24,7 +10,6 @@
 # If relying on shell invocation of zbarimg
 #import subprocess
 #import tempfile
-
 
 import imp
 import sys
@@ -77,14 +62,18 @@ from PIL import Image
 def barcodeScan(imagePNGPath, scan_region):
     """
     Return None if a barcode was not found. If a barcode was found,
-    return a string corresponding to the barcode-encoded data. Search
-    within the region defined by SCAN_REGION when SCAN_REGION is a
-    list. If SCAN_REGION is not a list, the full image is analyzed.
-    When SCAN_REGION is a list, it specifies two points as
+    return a string corresponding to the barcode-encoded data.
+
+    Search within the region defined by SCAN_REGION when SCAN_REGION
+    is a list. When SCAN_REGION is a list, it specifies two points as
     [x1,y1,x2,y2]. These two points (x1,y1) and (x2,y2) are pairs
     (x,y) of percentages (each expressed as a value between 0 and 1.0)
     relative to the dimensions of the image; they define the box
     within which the barcode scan occurs.
+
+    If SCAN_REGION is not a list, the full image is analyzed. If
+    analysis of the full image is desirable, do not set SCAN_REGION to
+    [0,0,1,1] but instead set it to None or some other non-list value.
     """
     # sanity check(s)
     if not isinstance(scan_region,list):
@@ -169,6 +158,7 @@ def barcodeScan_zbarimg (pil):
     return barcodeString
 
 def barcodeScan_python_zbar_sub (pilCropped):
+    lg.debug("barcodeScan_python_zbar_sub.00")
     pilCroppedWidth,pilCroppedHeight = pilCropped.size
     raw = pilCropped.tobytes()
     # wrap raw image data in zbar.Image
@@ -188,7 +178,7 @@ def barcodeScan_python_zbar_sub (pilCropped):
         lg.debug("symbol: %s",symbol)
         barcodeString = symbol.data
         #barcodeType = symbol.type
-    lg.debug("barcodeScan.90: %s",barcodeString)
+    lg.debug("barcodeScan_python_zbar_sub.90: %s",barcodeString)
     # clean up (destroy the image object to free up references to the data and symbols)
     # - note: if another image will be scanned, it's also possible to simply recycle the image object
     del(image)

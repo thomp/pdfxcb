@@ -1,22 +1,7 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+"""Split a PDF document based on the locations of barcodes
+"""
 
-# (c) 2018 David A. Thompson <pdfxcb.thomp@mailhero.io>
-#
-# This file is part of pdfxcb
-#
-# pdfxcb is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# pdfxcb is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with pdfxcb. If not, see <http://www.gnu.org/licenses/>.
+# Author: David A. Thompson
 
 import argparse
 import imp
@@ -145,13 +130,22 @@ def generate_output_file_names(cover_sheet_barcodes,cover_sheet_indices,output_d
 
 def generate_page_ranges(cover_sheet_indices,png_file_page_number_tuples,number_of_pages):
     """
-    Calling code must guarantee that tuples in png_file_page_number_tuples are ordered (ascending) with respect to page numbers.
+    Calling code must guarantee that tuples in
+    PNG_FILE_PAGE_NUMBER_TUPLES are ordered (ascending) with respect
+    to page numbers. COVER_SHEET_INDICES is an array of integers, each
+    an index value identifying a member of PNG_FILE_PAGE_NUMBER_TUPLES
+    which corresponds to a cover sheet.
     """
     # to capture last set of pages, tag on an imaginary cover sheet at the end
-    cover_sheet_indices.append(number_of_pages)
+    cover_sheet_indices.append(
+        len(png_file_page_number_tuples)
+    )
+    png_file_page_number_tuples.append((None,number_of_pages+1))
     page_ranges = []
     for cover_sheet_index, next_cover_sheet_index in zip(cover_sheet_indices[:-1],cover_sheet_indices[1:]):
-        page_ranges.append((png_file_page_number_tuples[cover_sheet_index][1], png_file_page_number_tuples[next_cover_sheet_index-1][1]))
+        page_ranges.append(
+            (png_file_page_number_tuples[cover_sheet_index][1],
+             png_file_page_number_tuples[next_cover_sheet_index][1]-1))
     return page_ranges
 
 def sanity_checks (dirs,files):
@@ -180,7 +174,6 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
     scanned document).
     """
     global lg
-    # sanity checks
     sanity_checks([output_dir],[pdf_file_spec])
     # If confident that the PDF under analysis is derived from a scan
     # (i.e., contains only bitmap data), then the images embedded in
@@ -188,12 +181,20 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
     # data on the cover sheet pages, then rasterization is indicated.
     # See doc/optimization.md for notes on time implications.
 
+    # PNG_FILE_PAGE_NUMBER_TUPLES is an array where each member has
+    # the form (<PNG file name>, <PDF page number>). There is no
+    # guarantee that all pages in the original PDF document are
+    # represented. Furthermore, there may be multiple PNG images per
+    # PDF page -- i.e., the array might include ("flurpies.png",1) and
+    # ("glurpies.png",1).
+
     # FIXME: consider having a single call here -- FOO -- that specializes on rasterize_p
     if rasterize_p:
         # extract PDF pages as image data (PNG files)
-        #
-        # FIXME: split_pdf_to_png_files doesn't yet return page numbers
         png_file_page_number_tuples = split_pdf_to_png_files(pdf_file_spec,output_dir)
+        # Once rasterized pages are generated, optionally scan for cue marks
+        # CUE_INDICES = array where each member is an integer indicating index of member of png_file_page_number_tuples where the corresponding bitmap has a cue mark
+        # cue_indices = scan_for_cue_marks(png_file_page_number_tuples) <-- use urh_corner_mean w/reasonable threshold (10? 20? 50?) for "black" 
     else:
         # extract images directly from PDF
         png_file_page_number_tuples = invoke_pdfimages_on(pdf_file_spec,output_dir)
@@ -210,7 +211,7 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
         scan_region = ([0,0,0.7,0.5])
     else:
         # 2. png files represent images from PDF (via pdfimages)
-        scan_region = ([0,0,1,1])
+        scan_region = None # None is not treated as the equivalent of ([0,0,1,1]). ([0,0,1,1]) triggers cropping by barcodeScan.
     cover_sheet_barcodes, cover_sheet_indices = locate_cover_sheets(png_file_page_number_tuples,output_dir,match_re,scan_region)
     print(cover_sheet_barcodes)
     lg.debug(cover_sheet_barcodes)
@@ -265,9 +266,10 @@ def invoke_pdfimages_on (pdf_file_spec,output_dir):
     series of files, each representing a single PNG image. Write files
     to directory specified by OUTPUT_DIR.
 
-Returns a list of tuples where each tuple has the structure (png_file,png_file_page_number)
-png_file_page_number is an integer.
-List is an ordered sequence with respect to page number - low to high
+    Returns a list of tuples where each tuple has the structure
+    (png_file,png_file_page_number) png_file_page_number is an
+    integer. The list is an ordered sequence with respect to page
+    number - low to high.
     """
     png_file_page_number_tuples = None
     try:
@@ -309,7 +311,11 @@ def module_sanity_check (module_name,exitp):
             sys.exit(msg)
 
 def split_pdf_to_png_files (pdf_file_spec,output_dir):
-    """Split PDF file specified by PDF_FILE_SPEC into a series of files, each representing a single page as a PNG image. Write files to directory specified by OUTPUT_DIR."""
+    """
+    Split the PDF file specified by PDF_FILE_SPEC into a series of
+    files, each representing a single page as a PNG image. Write files
+    to directory specified by OUTPUT_DIR.
+    """
     png_files = None
     try:
         # sanity check
@@ -318,7 +324,8 @@ def split_pdf_to_png_files (pdf_file_spec,output_dir):
             lg.error(json1.json_msg(108,[msg],False,files=[pdf_file_spec]))
             sys.exit(msg)
         else:
-            png_files = pdf.pdf_to_pngs(pdf_file_spec,output_dir)
+            # array of (<file_name>,<page_number>) tuples
+            png_specs = pdf.pdf_to_pngs(pdf_file_spec,output_dir)
     except Exception as e:
         msg = json1.json_failed_to_convert_pdf(e,pdf_file_spec)
         lg.error(msg)
@@ -327,8 +334,8 @@ def split_pdf_to_png_files (pdf_file_spec,output_dir):
         lg.info(json1.json_last_log_msg())
         sys.exit(msg)
     else:
-        lg.info(json1.json_pdf_to_pngs_success(pdf_file_spec,png_files))
-        return png_files
+        lg.info(json1.json_pdf_to_pngs_success(pdf_file_spec,png_specs))
+        return png_specs
 
 def write_page_scores(page_scores, output_file):
     f = open(output_file, 'w')
@@ -400,6 +407,11 @@ def main():
     for handler in lg.getLogger().handlers:
         lg.getLogger().removeHandler(handler)
     formatter = logging.Formatter(json_log_format)
+    # sanity check for existence of log file directory
+    if (os.path.dirname(logfile) and
+        not os.path.exists(os.path.dirname(logfile))):
+        raise Exception(str.format("log file directory {0} not present",
+                                   os.path.dirname(logfile)))
     file_handler = logging.FileHandler(logfile,'w')
     file_handler.setFormatter(formatter)
     lg.getLogger().addHandler(file_handler)
@@ -419,11 +431,12 @@ def main():
     pdf_file_spec = args.input_files[0]
     lg.debug(pdf_file_spec)
     lg.info(json1.json_first_log_msg(identifier, files = [pdf_file_spec] ))
+    rasterize_p = False
     # generic debugging
     lg.debug(os.getcwd())         # current/working directory
     # might also want to import platform to get architecture, other details...
     try:
-        pdfxcb(pdf_file_spec,args.output_dir,match_re)
+        pdfxcb(pdf_file_spec,args.output_dir,match_re,rasterize_p)
     except Exception as e:
         lg.error("Crash and burn")
         lg.error(sys.exc_info()[0])
