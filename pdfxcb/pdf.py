@@ -29,7 +29,6 @@ def pdf_number_of_pages(pdf_file):
         lg.error(json1.json_msg(109, "Failure to open or parse a PDF file -- possible indication of a corrupt PDF",None,file=pdf_file))
         raise e
 
-
 def pdf_page_to_png(src_pdf, pagenum = 0, resolution = 72):
     """
     Return the specified PDF page as a wand.image.Image png.
