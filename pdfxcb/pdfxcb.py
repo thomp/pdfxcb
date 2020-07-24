@@ -173,6 +173,13 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
     # data on the cover sheet pages, then rasterization is indicated.
     # See doc/optimization.md for notes on time implications.
 
+    # PNG_FILE_PAGE_NUMBER_TUPLES is an array where each member has
+    # the form (<PNG file name>, <PDF page number>). There is no
+    # guarantee that all pages in the original PDF document are
+    # represented. Furthermore, there may be multiple PNG images per
+    # PDF page -- i.e., the array might include ("flurpies.png",1) and
+    # ("glurpies.png",1).
+
     # FIXME: consider having a single call here -- FOO -- that specializes on rasterize_p
     if rasterize_p:
         # extract PDF pages as image data (PNG files)
