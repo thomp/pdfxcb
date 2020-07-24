@@ -159,6 +159,7 @@ def barcodeScan_zbarimg (pil):
     return barcodeString
 
 def barcodeScan_python_zbar_sub (pilCropped):
+    lg.debug("barcodeScan_python_zbar_sub.00")
     pilCroppedWidth,pilCroppedHeight = pilCropped.size
     raw = pilCropped.tobytes()
     # wrap raw image data in zbar.Image
