@@ -13,7 +13,17 @@ import time
 
 # see doc/log.txt
 def json_msg(code,message,outfile,data=None,file=None,files=None,pdffile=None,pngfiles=None):
-    """Return a string or, if OUTFILE is a string, send to the file corresponding to OUTFILE. The output should be a JSON object with a code slot, a message slot, a time slot, a microsec slot, and additional slots as specified by the function's additional arguments/parameters."""
+    """
+    Return a string or, if OUTFILE is a string, send to the file
+    corresponding to OUTFILE. The output should be a JSON object with a
+    code slot, a message slot, a time slot, a microsec slot, and
+    additional slots as specified by the function's additional
+    arguments/parameters.
+
+    The first line of MESSAGE should be succinct and not disclose
+    excessive detail. The intent is that this string could serve as an
+    update for a non-technical end-user.
+    """
     # if appendp is True (the default), create file if nonexistent; append if existent
     appendp=True
     if appendp:
@@ -50,7 +60,11 @@ def json_msg_obj(code,message,data=None,file=None,files=None,pdffile=None,pngfil
 # messages
 #
 def json_barcode_not_found_msg(files,msg):
-    """FILES is an array where each member is a string specifying the location of a diagnostic image file. MSG is additional data encapsulated as a string"""
+    """
+    FILES is an array where each member is a string specifying the
+    location of a diagnostic image file. MSG is additional data
+    encapsulated as a string.
+    """
     message = 'Anticipated a barcode but barcode was not found; see diagnostic image file(s) at {}'.format(files)
     if msg:
         message = message + '; ' + msg;
