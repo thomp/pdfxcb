@@ -176,9 +176,10 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
     # FIXME: consider having a single call here -- FOO -- that specializes on rasterize_p
     if rasterize_p:
         # extract PDF pages as image data (PNG files)
-        #
-        # FIXME: split_pdf_to_png_files doesn't yet return page numbers
         png_file_page_number_tuples = split_pdf_to_png_files(pdf_file_spec,output_dir)
+        # Once rasterized pages are generated, optionally scan for cue marks
+        # CUE_INDICES = array where each member is an integer indicating index of member of png_file_page_number_tuples where the corresponding bitmap has a cue mark
+        # cue_indices = scan_for_cue_marks(png_file_page_number_tuples) <-- use urh_corner_mean w/reasonable threshold (10? 20? 50?) for "black" 
     else:
         # extract images directly from PDF
         png_file_page_number_tuples = invoke_pdfimages_on(pdf_file_spec,output_dir)
