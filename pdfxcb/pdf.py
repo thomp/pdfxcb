@@ -185,11 +185,11 @@ def pdf_to_pngs__pdftoppm (pdf_file, number_of_pages, outfile_root, output_dir):
         raise Exception('no support (at this point) for page count exceeding 1000 pages')
     string_format_string = "{0}-" + index_format_string + ".png"
     for pagenumber in range(number_of_pages):
-        png_infile = str.format(
+        png_file = str.format(
             string_format_string,
             output_dir_and_filename,pagenumber+1);
-        png_files.append(png_infile)
-    return png_files
+        return_value.append((png_file,pagenumber))
+    return return_value
 
 #
 # pdfimages
