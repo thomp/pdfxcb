@@ -8,7 +8,7 @@ import os.path
 
 # configure logging
 import logging
-# define busca logger as the generic logger
+# define the generic logger
 lg=logging
 
 

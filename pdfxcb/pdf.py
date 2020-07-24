@@ -13,7 +13,7 @@ import PyPDF2
 import logging
 lg=logging
 
-# internal/busca modules
+# internal modules
 import json1
 
 def pdf_number_of_pages(pdf_file):
