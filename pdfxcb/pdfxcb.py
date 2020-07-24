@@ -130,13 +130,22 @@ def generate_output_file_names(cover_sheet_barcodes,cover_sheet_indices,output_d
 
 def generate_page_ranges(cover_sheet_indices,png_file_page_number_tuples,number_of_pages):
     """
-    Calling code must guarantee that tuples in png_file_page_number_tuples are ordered (ascending) with respect to page numbers.
+    Calling code must guarantee that tuples in
+    PNG_FILE_PAGE_NUMBER_TUPLES are ordered (ascending) with respect
+    to page numbers. COVER_SHEET_INDICES is an array of integers, each
+    an index value identifying a member of PNG_FILE_PAGE_NUMBER_TUPLES
+    which corresponds to a cover sheet.
     """
     # to capture last set of pages, tag on an imaginary cover sheet at the end
-    cover_sheet_indices.append(number_of_pages)
+    cover_sheet_indices.append(
+        len(png_file_page_number_tuples)
+    )
+    png_file_page_number_tuples.append((None,number_of_pages+1))
     page_ranges = []
     for cover_sheet_index, next_cover_sheet_index in zip(cover_sheet_indices[:-1],cover_sheet_indices[1:]):
-        page_ranges.append((png_file_page_number_tuples[cover_sheet_index][1], png_file_page_number_tuples[next_cover_sheet_index-1][1]))
+        page_ranges.append(
+            (png_file_page_number_tuples[cover_sheet_index][1],
+             png_file_page_number_tuples[next_cover_sheet_index][1]-1))
     return page_ranges
 
 def sanity_checks (dirs,files):
