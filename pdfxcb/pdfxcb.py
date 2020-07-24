@@ -174,7 +174,6 @@ def pdfxcb (pdf_file_spec,output_dir,match_re,rasterize_p):
     scanned document).
     """
     global lg
-    # sanity checks
     sanity_checks([output_dir],[pdf_file_spec])
     # If confident that the PDF under analysis is derived from a scan
     # (i.e., contains only bitmap data), then the images embedded in
